@@ -1,0 +1,128 @@
+---
+title: "Lab 5"
+output: html_document
+date: "2024-03-29"
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+load("~/Desktop/RWork/V0500_Lecture1”/BRFSS2022_rev.RData")
+
+
+# first want to make some factors into numbers
+brfss22$Age_midpt <- fct_recode(brfss22$X_AGEG5YR, "21" = "Age 18 to 24",
+                                "27" = "Age 25 to 29", "32" = "Age 30 to 34",
+                                "37" = "Age 35 to 39", "42" = "Age 40 to 44",
+                                "47" = "Age 45 to 49", "52" = "Age 50 to 54",
+                                "57" = "Age 55 to 59", "62" = "Age 60 to 64",
+                                "67" = "Age 65 to 69", "72" = "Age 70 to 74",
+                                "77" = "Age 75 to 79", "82" = "Age 80 or older",
+                                NULL = "Dont know/Refused/Missing")
+brfss22$Age_midpt <- as.numeric(levels(brfss22$Age_midpt))[brfss22$Age_midpt]
+brfss22$income_midpoint <- fct_recode(brfss22$INCOME3, 
+                                      "7500" = "Household income less than $10,000",
+                                      "12500" = "Less than $15,000 ($10,000 to less than $15,000)",
+                                      "17500" = "Less than $20,000 ($15,000 to less than $20,000) ",
+                                      "22500" = "Less than $25,000 ($20,000 to less than $25,000) ",
+                                      "30000" = "Less than $35,000 ($25,000 to less than $35,000) ",
+                                      "42500" = "Less than $50,000 ($35,000 to less than $50,000) ",
+                                      "62500" = "Less than $75,000 ($50,000 to less than $75,000)",
+                                      "87500" = "Less than $100,000 ($75,000 to less than $100,000)",
+                                      "125000" = "Less than $150,000 ($100,000 to less than $150,000)",
+                                      "175000" = "Less than $200,000 ($150,000 to less than $200,000)",
+                                      "210000" = "$200,000 or more",
+                                      NULL = "Dont know/Not sure",
+                                      NULL = "Refused")
+brfss22$income_midpoint <- as.numeric(levels(brfss22$income_midpoint))[brfss22$income_midpoint]
+
+
+
+brfss22$Educ_number <- fct_recode(brfss22$EDUCA, 
+                                  "0" = "Never attended school or only kindergarten", 
+                                  "4.5" = "Grades 1 through 8 (Elementary)",
+                                  "10" = "Grades 9 through 11 (Some high school)",
+                                  "12" = "Grade 12 or GED (High school graduate)",
+                                  "14" = "College 1 year to 3 years (Some college or technical school)",
+                                  "16" = "College 4 years or more (College graduate)",
+                                  NULL = "Refused" )
+brfss22$Educ_number <- as.numeric(levels(brfss22$Educ_number))[brfss22$Educ_number]
+
+```
+
+
+```{r}
+# this level name can create problems later so fix it here
+levesbrfssmarijanXPRACE27 <- "dont know not sure"
+
+select1 <- !is.na(brfss22$MARIJAN1)
+brfss_marijan <- subset(brfss22, select1 )
+
+
+p_cannabis_age <- ggplot(data = brfss_marijan,
+                         mapping = aes(x = Age_midpt,
+                                       y = MARIJAN1))
+p_cannabis_age + geom_smooth()
+
+model_1 <- lm(MARIJAN1 ~ Age_midpt, data = brfss_marijan)
+summary(model_1)
+```
+
+
+```{r}
+#According to the data, race is significant because depending on the participants race there is a decrease/increase in marijuana usage.
+#Based on the data, if you identify as Black or African American there is a significantly less usage of marijuana compared to if you are
+#American Indian or Alaskan Native. Another significant correlation is Marijuana use and eduation. There is a significant correlation between 
+#those that went to some high school and marijuana usage. 
+model_2 <- lm(MARIJAN1 ~ Age_midpt + X_PRACE2 + X_HISPANC + EDUCA, data = brfss_marijan)
+summary(model_2)
+
+
+
+# maybe get fancy
+require(stargazer)
+stargazer(model_2, type = "?")
+# play with stargazer instead of summary, it can look nicer!
+# it might throw an error at top but then work fine, just ignore it
+
+summary(brfss_marijan)
+
+#Some additional measures that I incorporated for the 3rd model are acetouch and acehurt. A good predictor of marijuana usage 
+#is if the participant was touced once or more than once. Another good predictor of marijuana usage is if the participant 
+#was hurt once or more than once. These are good predictors of marijuana usage because their interaction with marijuana usage was 
+#very significant compared to those that said don't know or refused to answer. 
+
+model_3 <- lm(MARIJAN1 ~ Age_midpt + ACETOUCH + ACEHURT1, data = brfss_marijan)
+summary(model_3)
+
+#No depression means less marijuana usage (negative sign)
+#In this model I am looking at marijuana, depression, and income. In this model those that 
+#answered no to depression, answered don't know, or refused to answer have less marijuana usage.
+#In addition, there was a significant link between income and less marijuana usage. 
+model_4 <- lm(MARIJAN1 ~ ACEDEPRS + income_midpoint, data= brfss_marijan)
+summary(model_4)
+
+#graph
+levels(brfss22$ACETOUCH)
+
+brfss_marijan$brfss_marijan_touch <- fct_recode(brfss_marijan$ACETOUCH, "0" = "Adverse Childhood Exper, never:  How often did anyone at least 5 years older than you or an adult, ever touch you sexually",
+                                                          "1"= "once",
+                                                          "1"= "more than once",
+                                                          NULL = "dont know not sure",
+                                                          NULL = "refused")
+brfss_marijan$brfss_marijan_touch <- as.numeric(levels(brfss_marijan$brfss_marijan_touch))[brfss_marijan$brfss_marijan_touch]
+
+summary(brfss_marijan$brfss_marijan_touch)
+                                                          
+model_4_graph <- ggplot(data = brfss_marijan,
+                         mapping = aes(x = MARIJAN1,
+                                       y = brfss_marijan_touch))
+model_4_graph + geom_point(alpha=0.05)+
+  geom_smooth()+
+labs(x = "Marijuana", y = "Touched",
+     tile = "Marijuana usage in those that have been touched", 
+     caption = "Source: brfss_marijan.")
+
+```Compared to model 4, the variables in model three increased the r squared which means that they really help predict. These variables are Age midpoint, acetouch, and acehurt. I was surprised that the r squared didn't increase as much in model 4 because one of the variables in model 4 is depression and one would think that it has a significant correlation with marijuana usage. 
+
+
